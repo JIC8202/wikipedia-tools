@@ -29,7 +29,7 @@ links = []
 
 def add_node(title):
     if title not in node_titles:
-        nodes.append({'id': pl_title, 'group': 0})
+        nodes.append({'id': title, 'group': 0})
         node_titles.add(title)
 
 # load 'from' pages
