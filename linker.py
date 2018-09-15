@@ -11,15 +11,26 @@ parser.add_argument('pages_from', type=argparse.FileType('r'),
                     help='list of articles from which to find links (PetScan JSON)')
 parser.add_argument('pages_to', type=argparse.FileType('r'),
                     help='list of articles to which to find links (PetScan JSON)')
-parser.add_argument('output', type=argparse.FileType('w'), default=sys.stdout,
+parser.add_argument('output', type=argparse.FileType('w'),
                     help='output file')
-
 args = parser.parse_args()
+
 
 pages_from = set() # page IDs
 pages_to = set() # page titles
 
+# map from page IDs to titles
+# since pl_from is given as IDs
 id_to_title = {}
+
+node_titles = set() # node deduplication
+nodes = []
+links = []
+
+def add_node(title):
+    if title not in node_titles:
+        nodes.append({'id': pl_title, 'group': 0})
+        node_titles.add(title)
 
 # load 'from' pages
 data = json.load(args.pages_from)
@@ -40,9 +51,17 @@ for row in reader:
     pl_title = row[2]
     pl_namespace = row[3]
 
-    # only consider links within main namespace
+    # ignore links outside default namespace
     if pl_from_namespace is not '0' or pl_namespace is not '0':
         continue
 
     if pl_from in pages_from and pl_title in pages_to:
-        print('%s => %s' % (id_to_title[pl_from], pl_title), file=args.output)
+        pl_title_from = id_to_title[pl_from]
+
+        add_node(pl_title)
+        add_node(pl_title_from)
+
+        links.append({'source': pl_title_from, 'target': pl_title, 'value': 1})
+
+json.dump({'nodes': nodes,'links': links}, args.output,
+    separators=(',', ':')) # minify json
