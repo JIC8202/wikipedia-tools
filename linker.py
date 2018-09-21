@@ -13,6 +13,8 @@ parser.add_argument('pages_to', type=argparse.FileType('r'),
                     help='list of articles to which to find links (PetScan JSON)')
 parser.add_argument('output', type=argparse.FileType('w'),
                     help='output file')
+parser.add_argument('--reverse', action='store_true',
+                    help='reverse edge direction in output graph')
 args = parser.parse_args()
 
 
@@ -61,7 +63,11 @@ for row in reader:
         add_node(pl_title)
         add_node(pl_title_from)
 
-        links.append({'source': pl_title_from, 'target': pl_title, 'value': 1})
+        links.append({
+            'source': pl_title if args.reverse else pl_title_from,
+            'target': pl_title_from if args.reverse else pl_title,
+            'value': 1
+        })
 
-json.dump({'nodes': nodes,'links': links}, args.output,
+json.dump({'nodes': nodes, 'links': links}, args.output,
     separators=(',', ':')) # minify json
