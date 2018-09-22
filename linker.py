@@ -2,7 +2,11 @@
 import argparse
 import csv
 import json
+import networkx
 import sys
+
+from networkx.readwrite import json_graph
+
 
 parser = argparse.ArgumentParser(description='Analyze Wikipedia links.')
 parser.add_argument('page_links', type=argparse.FileType('r'),
@@ -18,21 +22,14 @@ parser.add_argument('--reverse', action='store_true',
 args = parser.parse_args()
 
 
-pages_from = set() # page IDs
-pages_to = set() # page titles
+pages_from = set()  # page IDs
+pages_to = set()  # page titles
 
 # map from page IDs to titles
 # since pl_from is given as IDs
 id_to_title = {}
 
-node_titles = set() # node deduplication
-nodes = []
-links = []
-
-def add_node(title):
-    if title not in node_titles:
-        nodes.append({'id': title, 'group': 0})
-        node_titles.add(title)
+g = networkx.DiGraph()
 
 # load 'from' pages
 data = json.load(args.pages_from)
@@ -60,14 +57,15 @@ for row in reader:
     if pl_from in pages_from and pl_title in pages_to:
         pl_title_from = id_to_title[pl_from]
 
-        add_node(pl_title)
-        add_node(pl_title_from)
+        if args.reverse:
+            g.add_edge(pl_title, pl_title_from)
+        else:
+            g.add_edge(pl_title_from, pl_title)
 
-        links.append({
-            'source': pl_title if args.reverse else pl_title_from,
-            'target': pl_title_from if args.reverse else pl_title,
-            'value': 1
-        })
+# embed node degree information
+for node, data in g.nodes(data=True):
+    data['indegree'] = g.in_degree(node)
+    data['outdegree'] = g.out_degree(node)
 
-json.dump({'nodes': nodes, 'links': links}, args.output,
-    separators=(',', ':')) # minify json
+json.dump(json_graph.node_link_data(g), args.output,
+    separators=(',', ':'))  # minify json

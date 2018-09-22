@@ -1,6 +1,10 @@
 # wikipedia-tools
 scripts for analyzing wikipedia dumps
 
+## Requirements
+* Python 3
+* networkx library
+
 ## Usage
 ### link finder
 ```
