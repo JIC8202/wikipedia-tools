@@ -2,9 +2,9 @@
 import argparse
 import csv
 import json
-import networkx
 import sys
 
+import networkx as nx
 from networkx.readwrite import json_graph
 
 
@@ -29,17 +29,17 @@ pages_to = set()  # page titles
 # since pl_from is given as IDs
 id_to_title = {}
 
-g = networkx.DiGraph()
+g = nx.DiGraph()
 
 # load 'from' pages
-data = json.load(args.pages_from)
-for page in data['*'][0]['a']['*']:
+f_data = json.load(args.pages_from)
+for page in f_data['*'][0]['a']['*']:
     pages_from.add(page['id'])
     id_to_title[page['id']] = page['title']
 
 # load 'to' pages
-data = json.load(args.pages_to)
-for page in data['*'][0]['a']['*']:
+t_data = json.load(args.pages_to)
+for page in t_data['*'][0]['a']['*']:
     pages_to.add(page['title'])
 
 # search page links
@@ -51,21 +51,13 @@ for row in reader:
     pl_namespace = row[3]
 
     # ignore links outside default namespace
-    if pl_from_namespace is not '0' or pl_namespace is not '0':
-        continue
+    if pl_from_namespace is '0' and pl_namespace is '0' and \
+       pl_from in pages_from and pl_title in pages_to:
+        g.add_edge(id_to_title[pl_from], pl_title)
 
-    if pl_from in pages_from and pl_title in pages_to:
-        pl_title_from = id_to_title[pl_from]
-
-        if args.reverse:
-            g.add_edge(pl_title, pl_title_from)
-        else:
-            g.add_edge(pl_title_from, pl_title)
-
-# embed node degree information
-for node, data in g.nodes(data=True):
-    data['indegree'] = g.in_degree(node)
-    data['outdegree'] = g.out_degree(node)
-
-json.dump(json_graph.node_link_data(g), args.output,
-    separators=(',', ':'))  # minify json
+# process graph
+if args.reverse:
+    g.reverse(copy=False)
+g = nx.convert_node_labels_to_integers(g, label_attribute='id')
+g_json = json_graph.node_link_data(g, attrs={'name': 'index'})
+json.dump(g_json, args.output, separators=(',', ':'))
