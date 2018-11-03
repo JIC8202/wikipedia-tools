@@ -22,25 +22,31 @@ parser.add_argument('--reverse', action='store_true',
 args = parser.parse_args()
 
 
-pages_from = set()  # page IDs
-pages_to = set()  # page titles
+class PageSet:
+    def __init__(self, data):
+        self.ids = set()
+        self.titles = set()
+        self.title_by_id = dict()
 
-# map from page IDs to titles
-# since pl_from is given as IDs
-id_to_title = {}
+        for page in data['*'][0]['a']['*']:
+            self.ids.add(page['id'])
+            self.titles.add(page['title'])
+            self.title_by_id[page['id']] = page['title']
+
+    def __contains__(self, item):
+        if isinstance(item, int):
+            return item in self.ids
+        else:
+            return item in self.titles
+
+    def get_title(self, id):
+        return self.title_by_id[id]
+
+
+pages_from = PageSet(json.load(args.pages_from))
+pages_to = PageSet(json.load(args.pages_to))
 
 g = nx.DiGraph()
-
-# load 'from' pages
-f_data = json.load(args.pages_from)
-for page in f_data['*'][0]['a']['*']:
-    pages_from.add(page['id'])
-    id_to_title[page['id']] = page['title']
-
-# load 'to' pages
-t_data = json.load(args.pages_to)
-for page in t_data['*'][0]['a']['*']:
-    pages_to.add(page['title'])
 
 # search page links
 reader = csv.reader(args.page_links)
@@ -53,11 +59,19 @@ for row in reader:
     # ignore links outside default namespace
     if pl_from_namespace is '0' and pl_namespace is '0' and \
        pl_from in pages_from and pl_title in pages_to:
-        g.add_edge(id_to_title[pl_from], pl_title)
+        g.add_edge(pages_from.get_title(pl_from), pl_title)
 
-# process graph
+# add group information to nodes
+for node in g.nodes:
+    group = (node in pages_from) * 2 + (node in pages_to) * 1
+    g.nodes[node]['group'] = group
+
+# reverse direction of edges if requested
 if args.reverse:
-    g.reverse(copy=False)
+    g = g.reverse(copy=False)
+
+# use numeric indices
 g = nx.convert_node_labels_to_integers(g, label_attribute='id')
 g_json = json_graph.node_link_data(g, attrs={'name': 'index'})
+
 json.dump(g_json, args.output, separators=(',', ':'))
