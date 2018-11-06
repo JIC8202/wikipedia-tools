@@ -46,7 +46,7 @@ class PageSet:
 A = PageSet(json.load(args.A))
 B = PageSet(json.load(args.B))
 
-g = nx.Graph()
+g = nx.DiGraph()
 
 # search page links
 reader = csv.reader(args.page_links)
