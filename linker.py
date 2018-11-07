@@ -71,8 +71,7 @@ for node in g.nodes:
     g.nodes[node]['group'] = group
 
 # use numeric indices
-g = nx.convert_node_labels_to_integers(g, label_attribute='id')
-g_json = json_graph.node_link_data(g, attrs={'name': 'index'})
+g_json = json_graph.node_link_data(g, attrs={'name': 'id'})
 
 # write JSON to output
 json.dump(g_json, args.output, separators=(',', ':'))
